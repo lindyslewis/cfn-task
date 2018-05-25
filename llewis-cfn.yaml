@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: 'llewis cfn template for elb, asg, ec2'
+Resources:
+
+  llewisInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to client host
+      VpcId: 'vpc-da3c10bc'   #aws labs default vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+
+  llewisLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      #AssociatePublicIpAddress: 'true'
+      ImageId: 'ami-14c5486b' #default ami
+      SecurityGroups:
+      -  Ref: 'llewisInstanceSecurityGroup'
+      InstanceType: 't2.micro'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          yum install -y  nginx php70-fpm
+          echo "<html><head></head><body>From Mississippi, with love.</body></html>" > /usr/share/nginx/html/index.html
+          /etc/init.d/nginx start
+
+  llewisElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      AvailabilityZones:
+        Fn::GetAZs: ''
+      Listeners:
+        - LoadBalancerPort: '80'
+          InstancePort: '80'
+          Protocol: HTTP
+
+  llewisAutoScalingGroup:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      AvailabilityZones:
+        Fn::GetAZs: ""
+      LaunchConfigurationName:
+        Ref: "llewisLaunchConfiguration"
+      MinSize: "2"
+      MaxSize: "3"
+      LoadBalancerNames:
+        - Ref: "llewisElasticLoadBalancer"
+      MetricsCollection:
+        - Granularity: "1Minute"
+          Metrics:
+            - "GroupMinSize"
+            - "GroupMaxSize"
+
+  llewisDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: 'Z3809G91N7QZJE'
+      Name: 'lindylewis.elasticoperations.com.'
+      Type: 'CNAME'
+      TTL: '900'
+      ResourceRecords:
+        - !GetAtt llewisElasticLoadBalancer.DNSName
+
+Outputs:
+  StackVPC:
+    Description: DNS Record
+    Value: !Ref llewisDNSRecord
