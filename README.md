@@ -13,10 +13,6 @@ bundle install
 ruby pipeline.rb deploy
 ```
 
-## url
-
-lindylewis.elasticoperations.com
-
 ## what is running
 
 - Elastic Load Balancer
@@ -26,3 +22,7 @@ lindylewis.elasticoperations.com
 ## how to cleanup
 
 `ruby pipeline.rb cleanup`
+
+## url
+
+lindylewis.elasticoperations.com
